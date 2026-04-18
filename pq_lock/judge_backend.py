@@ -1,19 +1,16 @@
 """
 Judge Demo Backend - Quantum Cryptography Demonstration
-Runs on Raspberry Pi 3 with authentication and attack simulations
+Runs on Raspberry Pi 3 with quantum attack simulations
+Simplified: 2 interactive tabs (RSA vulnerable, Post-Quantum secure)
 """
 
 import os
-import json
-import hashlib
 import time
 from typing import Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import uvicorn
 from math import gcd
-from functools import reduce
 
 # ==================== CONFIG ====================
 JUDGE_PASSWORD = os.getenv("JUDGE_PASSWORD", "quantum2026")
@@ -31,58 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ==================== AUTHENTICATION ====================
-sessions = {}  # Simple in-memory session store
-
-def verify_password(password: str) -> bool:
-    """Verify judge password (SHA256 hash)"""
-    expected_hash = hashlib.sha256(JUDGE_PASSWORD.encode()).hexdigest()
-    provided_hash = hashlib.sha256(password.encode()).hexdigest()
-    return provided_hash == expected_hash
-
-@app.post("/api/authenticate")
-async def authenticate(data: Dict[str, Any]):
-    """
-    Authenticate judge with password.
-    Response: {status: "authenticated", token: "xxx"} or {status: "rejected"}
-    """
-    password = data.get("password", "")
-    
-    if not verify_password(password):
-        return JSONResponse(
-            status_code=401,
-            content={"status": "rejected", "message": "Invalid password"}
-        )
-    
-    # Create session token
-    token = hashlib.sha256(
-        f"{password}{time.time()}".encode()
-    ).hexdigest()[:16]
-    
-    sessions[token] = {
-        "created_at": time.time(),
-        "authenticated": True
-    }
-    
-    return {
-        "status": "authenticated",
-        "token": token,
-        "message": "Access granted. Three tabs available: RSA (vulnerable), Quantum (attack), Post-Quantum (secure)"
-    }
-
-@app.get("/api/verify-token/{token}")
-async def verify_token(token: str):
-    """Verify if token is still valid"""
-    if token not in sessions:
-        return {"valid": False}
-    
-    # Check if token expired (1 hour)
-    if time.time() - sessions[token]["created_at"] > 3600:
-        del sessions[token]
-        return {"valid": False}
-    
-    return {"valid": True}
 
 # ==================== RSA ATTACK SIMULATION ====================
 @app.post("/api/rsa-attack")
@@ -198,97 +143,6 @@ async def simulate_rsa_attack(data: Dict[str, Any]):
                 "total_time_seconds": round(total_time, 3),
                 "status": "LOCK OPENED - SYSTEM COMPROMISED"
             }
-        }
-    
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-
-# ==================== QUANTUM ATTACK SIMULATION ====================
-@app.post("/api/quantum-attack")
-async def simulate_quantum_attack(data: Dict[str, Any]):
-    """
-    Simulate quantum computer attacking RSA encryption
-    Shows why classical RSA is vulnerable to quantum computers
-    """
-    try:
-        start_time = time.time()
-        
-        # Detailed quantum attack simulation
-        n = 15  # RSA modulus
-        e = 3   # Public exponent
-        
-        steps_data = [
-            {
-                "step": 1,
-                "phase": "QUANTUM_SETUP",
-                "description": "Initializing quantum registers",
-                "qubits": 32,
-                "status": "Starting"
-            },
-            {
-                "step": 2,
-                "phase": "MODULAR_EXPONENTIATION",
-                "description": "Building quantum oracle for f(x) = a^x mod n",
-                "base": 7,
-                "status": "In progress"
-            },
-            {
-                "step": 3,
-                "phase": "QFT",
-                "description": "Quantum Fourier Transform to extract period",
-                "qubits": 32,
-                "status": "Processing"
-            },
-            {
-                "step": 4,
-                "phase": "MEASUREMENT",
-                "description": "Measuring quantum state to get phase",
-                "probability": 0.75,
-                "result": "Phase extracted"
-            },
-            {
-                "step": 5,
-                "phase": "PERIOD_FINDING",
-                "description": "Finding order of base",
-                "order": 4,
-                "status": "Found"
-            },
-            {
-                "step": 6,
-                "phase": "FACTORIZATION",
-                "description": "Using order to factor modulus",
-                "factor1": 3,
-                "factor2": 5,
-                "status": "Success!"
-            },
-            {
-                "step": 7,
-                "phase": "KEY_RECOVERY",
-                "description": "Recovering private exponent",
-                "private_key": 3,
-                "status": "Recovered"
-            }
-        ]
-        
-        execution_time = time.time() - start_time
-        
-        return {
-            "status": "attack_complete",
-            "attack_type": "QUANTUM_SHOR",
-            "vulnerability": "RSA is mathematically broken by quantum computers",
-            "steps": steps_data,
-            "result": {
-                "factors": "3 × 5 = 15",
-                "private_key": 3,
-                "lock_status": "COMPROMISED",
-                "time_to_compromise": "2.3 seconds (quantum)",
-                "time_classical": "9000+ years (factoring n=15 classically)"
-            },
-            "execution_time": round(execution_time, 3),
-            "conclusion": "Quantum computers can break RSA encryption. Transition to post-quantum cryptography is urgent."
         }
     
     except Exception as e:
@@ -416,11 +270,8 @@ if __name__ == "__main__":
     ╔═══════════════════════════════════════════════════════════════╗
     ║   Quantum Lock Judge Demo Backend - Raspberry Pi 3            ║
     ║   Port: {QUANTUM_API_PORT}                                               ║
-    ║   Authentication: Enabled (Password-based)                    ║
     ║   Endpoints:                                                  ║
-    ║   - POST /api/authenticate       (Login with password)        ║
     ║   - POST /api/rsa-attack         (Shor's algorithm demo)      ║
-    ║   - POST /api/quantum-attack     (Quantum attack details)     ║
     ║   - POST /api/pq-attack          (PQ defense demo)            ║
     ║   - POST /api/send-control-signal (Send unlock signal)        ║
     ║   - GET  /health                 (Health check)               ║

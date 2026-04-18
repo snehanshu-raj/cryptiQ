@@ -520,6 +520,10 @@
         const BACKEND_PORT = 8001;
         let backendUrl = `http://localhost:${BACKEND_PORT}`;
         let currentTab = 'rsa';
+        
+        // State tracking for security
+        let rsa_private_key_recovered = false;
+        let pq_attack_succeeded = false;
 
         // Auto-detect backend URL on load
         window.addEventListener('load', async () => {
@@ -645,6 +649,7 @@
             resultBox.classList.add('show', 'failure');
             document.getElementById('rsa-status').textContent = 'COMPROMISED';
             document.getElementById('rsa-status').className = 'status-text unlocked';
+            rsa_private_key_recovered = true;  // Private key has been recovered!
         }
 
         function resetRsa() {
@@ -652,6 +657,8 @@
             document.getElementById('rsa-result').classList.remove('show', 'failure', 'success');
             document.getElementById('rsa-status').textContent = 'LOCKED';
             document.getElementById('rsa-status').className = 'status-text locked';
+            rsa_private_key_recovered = false;  // Reset state
+            pq_attack_succeeded = false;  // Clear PQ state (isolated demo per tab)
         }
 
         // ==================== RSA UNLOCK ====================
@@ -786,20 +793,53 @@
             `;
             
             resultBox.classList.add('show', 'success');
+            pq_attack_succeeded = true;  // Attack was tested (but failed)
         }
 
         function resetPq() {
             document.getElementById('pq-result').innerHTML = '';
             document.getElementById('pq-result').classList.remove('show', 'failure', 'success');
+            pq_attack_succeeded = false;  // Reset state
+            rsa_private_key_recovered = false;  // Clear RSA key (isolated demo per tab)
         }
 
         // ==================== UNLOCK SIGNAL ====================
         async function successfulUnlock() {
             const btn = event.target;
+            const resultBox = document.getElementById('pq-result');
+            
+            // ⚠️ SECURITY CHECK: Only allow unlock if RSA private key was recovered
+            if (!rsa_private_key_recovered) {
+                resultBox.innerHTML = `
+                    <div class="result-title" style="color: var(--accent-red);">✗ AUTHENTICATION DENIED</div>
+                    <div class="result-text">
+                        🔒 <strong>ACCESS DENIED!</strong><br>
+                        No valid credentials found.<br><br>
+                        <strong>Why?</strong> ML-KEM encryption is so strong that even after testing all known quantum attack methods, the private key could not be recovered.<br><br>
+                        <strong>Hacker Status:</strong> NO ACCESS TO PRIVATE KEY → NO AUTHORIZATION → DOOR REMAINS LOCKED
+                    </div>
+                    <div class="stats" style="margin-top: 15px;">
+                        <div class="stat-box alert">
+                            <div class="stat-label">Authentication</div>
+                            <div class="stat-value">FAILED</div>
+                        </div>
+                        <div class="stat-box alert">
+                            <div class="stat-label">Private Key</div>
+                            <div class="stat-value">NOT FOUND</div>
+                        </div>
+                        <div class="stat-box success">
+                            <div class="stat-label">Lock Status</div>
+                            <div class="stat-value">SECURE ✓</div>
+                        </div>
+                    </div>
+                `;
+                resultBox.classList.remove('failure', 'success');
+                resultBox.classList.add('show', 'failure');
+                return;  // Stop execution
+            }
+            
             btn.disabled = true;
             btn.innerHTML = '<span class="loading"></span> Sending signal...';
-            
-            const resultBox = document.getElementById('pq-result');
 
             try {
                 const response = await fetch(`${backendUrl}/api/send-control-signal`, {
