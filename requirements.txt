@@ -1,2 +1,4 @@
 cryptography
 liboqs-python
+qiskit
+qiskit-aer

@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from pq_lock.controller import Controller
-from pq_lock.lock import QuantumResistantLock
+from pq_lock.hardware import MockLockHardware
+from pq_lock.post_quantum.lock import PQController, PostQuantumLock
 
 
 def main() -> None:
     print("=== Post-Quantum Lock Demo ===")
 
-    lock = QuantumResistantLock(kem_name="ML-KEM-512")
-    controller = Controller(kem_name="ML-KEM-512")
+    hardware = MockLockHardware()
+    lock = PostQuantumLock(kem_name="ML-KEM-512", hardware=hardware)
+    controller = PQController(kem_name="ML-KEM-512")
 
     print("Lock created.")
     print("Generating unlock request with ML-KEM...")
@@ -21,6 +22,8 @@ def main() -> None:
 
     print(f"Lock result: {result}")
     print(f"Lock open state: {lock.is_open}")
+    print(f"Mock actuator locked state: {hardware.is_locked}")
+    print(f"Mock actuator unlock count: {hardware.unlock_count}")
 
 
 if __name__ == "__main__":
