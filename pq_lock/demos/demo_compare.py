@@ -11,6 +11,7 @@ def main() -> None:
     print("=== Quantum Lock Comparison ===")
     print()
     print("This demo uses toy RSA only for education.")
+    print("The RSA example uses the canonical tiny Shor factoring modulus N = 15.")
     print("It does not claim that real-world RSA is currently broken.")
     print()
 
@@ -24,7 +25,7 @@ def main() -> None:
     print(f"Trusted signed unlock token -> {result}")
     print()
 
-    print("[2] Educational toy factoring attack")
+    print("[2] Tiny Shor order-finding attack")
     attack = factor_toy_rsa_modulus(rsa_public_key.n)
     compromised_private_key = attack.recover_private_key(rsa_public_key)
     forged_token = build_unlock_token("UNLOCK", compromised_private_key)
@@ -36,11 +37,13 @@ def main() -> None:
         f"{attack.factors[0]} x {attack.factors[1]} using base {attack.base}"
     )
     print(
-        f"Sampled order bitstring = {attack.sampled_bitstring}, "
-        f"recovered order = {attack.recovered_order}"
+        f"Measured phase bitstring = {attack.sampled_bitstring} "
+        f"({attack.sampled_phase}), recovered order = {attack.recovered_order}"
     )
-    if attack.used_order_fallback:
-        print("Pedagogical shortcut: exact tiny-N order was used when the sampled value was noisy.")
+    print(
+        f"Order-finding circuit used {attack.counting_qubits} counting qubits "
+        f"and {attack.shots} simulator shots."
+    )
     print(f"Forged RSA unlock token -> {forged_result}")
     print()
 

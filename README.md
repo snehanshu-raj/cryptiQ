@@ -9,6 +9,7 @@ This project shows two very different stories:
 3. A post-quantum lock using ML-KEM + AES-GCM does not fit that same factoring-based attack story.
 
 The RSA attack path is intentionally educational and toy-sized. It does not claim that current real-world RSA deployments are broken.
+For the factoring demo, the default toy RSA modulus is the canonical tiny example `N = 15`, and the attack uses a real order-finding circuit specialized to that case.
 
 ## Project Layout
 - `pq_lock/classical/` contains the toy RSA helpers and RSA lock.

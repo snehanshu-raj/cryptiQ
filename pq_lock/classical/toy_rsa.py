@@ -5,6 +5,7 @@ import hashlib
 import math
 
 TOY_PRIME_PAIRS: tuple[tuple[int, int], ...] = (
+    (3, 5),
     (11, 13),
     (17, 19),
     (23, 29),
@@ -26,7 +27,7 @@ class RSAPrivateKey:
 
 
 def _pick_prime_pair() -> tuple[int, int]:
-    return TOY_PRIME_PAIRS[1]
+    return TOY_PRIME_PAIRS[0]
 
 
 def _select_public_exponent(phi: int) -> int:
@@ -39,7 +40,7 @@ def _select_public_exponent(phi: int) -> int:
 def generate_toy_rsa_keypair(
     primes: tuple[int, int] | None = None,
 ) -> tuple[RSAPublicKey, RSAPrivateKey]:
-    """Generate a tiny educational RSA keypair."""
+    """Generate a tiny educational RSA keypair, defaulting to the Shor demo modulus 15."""
     p, q = primes or _pick_prime_pair()
     if p == q:
         raise ValueError("Toy RSA requires distinct primes.")
