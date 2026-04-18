@@ -1,0 +1,8 @@
+/venv
+/__pycache__
+/image_authenticate/models/
+/image_authenticate/face_auth.db
+/image_authenticate/goal.md
+/image_authenticate/known_faces/
+/image_authenticate/intruder_frames/
+

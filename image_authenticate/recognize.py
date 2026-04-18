@@ -1,0 +1,225 @@
+"""
+recognize.py — Real-time face recognition using webcam.
+
+Opens the webcam, detects faces in each frame, compares them against
+enrolled residents in the database using cosine similarity, and displays
+the result with bounding boxes (green = recognized, red = unknown).
+
+Unknown faces are saved to intruder_frames/ with timestamps.
+
+Usage:
+    python recognize.py
+    Press 'q' to quit the camera window.
+"""
+
+import os
+import json
+import time
+from datetime import datetime
+import numpy as np
+import cv2
+from insightface.app import FaceAnalysis
+
+from db import init_db, get_all_residents
+
+# ===== CONFIGURATION =====
+# Adjust these constants to tune behavior
+
+# Cosine similarity threshold for recognition.
+# Higher = stricter (fewer false positives, more false negatives)
+# Lower = more lenient (more false positives, fewer false negatives)
+# Recommended range for ArcFace: 0.3 - 0.5
+THRESHOLD = 0.4
+
+# Camera index (0 = default webcam, try 1 or 2 if wrong camera opens)
+CAMERA_INDEX = 0
+
+# Minimum seconds between saving intruder frames (prevents disk flooding)
+INTRUDER_SAVE_COOLDOWN = 2.0
+
+# ==========================
+
+# Paths relative to this script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(SCRIPT_DIR, "models")
+INTRUDER_DIR = os.path.join(SCRIPT_DIR, "intruder_frames")
+
+
+def load_model():
+    """Initialize InsightFace with ArcFace model."""
+    print("[recognize] Loading InsightFace model...")
+    app = FaceAnalysis(
+        name="buffalo_l",
+        root=MODEL_DIR,
+        providers=["CPUExecutionProvider"]
+    )
+    app.prepare(ctx_id=-1, det_size=(640, 640))
+    print("[recognize] Model loaded.")
+    return app
+
+
+def cosine_similarity(a, b):
+    """Compute cosine similarity between two vectors."""
+    dot = np.dot(a, b)
+    norm_a = np.linalg.norm(a)
+    norm_b = np.linalg.norm(b)
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def identify_face(embedding, residents):
+    """
+    Compare a face embedding against all enrolled residents.
+
+    Args:
+        embedding: 512-dim numpy array from the detected face
+        residents: list of (name, embedding) tuples from the database
+
+    Returns:
+        (best_name, best_score, is_recognized)
+    """
+    if not residents:
+        return "UNKNOWN", 0.0, False
+
+    best_name = "UNKNOWN"
+    best_score = -1.0
+
+    for name, resident_embedding in residents:
+        score = cosine_similarity(embedding, resident_embedding)
+        if score > best_score:
+            best_score = score
+            best_name = name
+
+    is_recognized = best_score > THRESHOLD
+    return best_name, best_score, is_recognized
+
+
+def save_intruder_frame(frame, frame_count):
+    """Save a frame of an unknown face to the intruder_frames/ directory."""
+    os.makedirs(INTRUDER_DIR, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"intruder_{timestamp}_frame{frame_count}.jpg"
+    filepath = os.path.join(INTRUDER_DIR, filename)
+    cv2.imwrite(filepath, frame)
+    return filepath
+
+
+def draw_label(frame, bbox, label, color, score=None):
+    """Draw a bounding box and label on the frame."""
+    x1, y1, x2, y2 = [int(v) for v in bbox]
+
+    # Draw bounding box
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+
+    # Build label text
+    text = label
+    if score is not None:
+        text = f"{label} ({score:.2f})"
+
+    # Draw label background
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.7
+    thickness = 2
+    (text_w, text_h), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    cv2.rectangle(frame, (x1, y1 - text_h - 10), (x1 + text_w + 5, y1), color, -1)
+
+    # Draw label text
+    cv2.putText(frame, text, (x1 + 2, y1 - 5), font, font_scale, (255, 255, 255), thickness)
+
+
+def main():
+    init_db()
+
+    # Load model
+    app = load_model()
+
+    # Load all enrolled residents (once at startup)
+    residents = get_all_residents()
+    if not residents:
+        print("\n[recognize] WARNING: No residents enrolled!")
+        print("           Run 'python enroll.py' first to add faces.")
+        print("           Starting anyway — all faces will be marked as UNKNOWN.\n")
+    else:
+        print(f"[recognize] Loaded {len(residents)} enrolled resident(s):")
+        for name, _ in residents:
+            print(f"  - {name}")
+
+    # Open webcam
+    print(f"\n[recognize] Opening camera (index {CAMERA_INDEX})...")
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+    if not cap.isOpened():
+        print("[recognize] ERROR: Could not open camera. Check CAMERA_INDEX.")
+        return
+
+    print("[recognize] Camera opened. Press 'q' to quit.\n")
+
+    # Tracking variables
+    intruder_frame_count = 0
+    last_intruder_save_time = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("[recognize] Failed to read frame from camera.")
+            break
+
+        # Detect faces in the frame
+        faces = app.get(frame)
+
+        for face in faces:
+            embedding = face.embedding
+            bbox = face.bbox  # [x1, y1, x2, y2]
+
+            # Identify the face
+            name, score, recognized = identify_face(embedding, residents)
+
+            if recognized:
+                # GREEN box — recognized resident
+                color = (0, 200, 0)
+                draw_label(frame, bbox, name, color, score)
+
+                result = {
+                    "status": "recognized",
+                    "name": name,
+                    "similarity": round(float(score), 4)
+                }
+                print(json.dumps(result))
+
+            else:
+                # RED box — unknown / intruder
+                color = (0, 0, 220)
+                draw_label(frame, bbox, "UNKNOWN", color, score)
+
+                # Save intruder frame (with cooldown to avoid flooding)
+                current_time = time.time()
+                saved_path = None
+
+                if current_time - last_intruder_save_time >= INTRUDER_SAVE_COOLDOWN:
+                    intruder_frame_count += 1
+                    saved_path = save_intruder_frame(frame, intruder_frame_count)
+                    last_intruder_save_time = current_time
+                    print(f"INTRUDER DETECTED — frame saved: {saved_path}")
+
+                result = {
+                    "status": "unknown",
+                    "similarity": round(float(score), 4),
+                    "frame_saved": saved_path
+                }
+                print(json.dumps(result))
+
+        # Show the frame
+        cv2.imshow("Face Authentication", frame)
+
+        # Press 'q' to quit
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            print("\n[recognize] Quitting...")
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+    print("[recognize] Camera released. Done.")
+
+
+if __name__ == "__main__":
+    main()
