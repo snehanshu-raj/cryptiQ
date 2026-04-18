@@ -46,12 +46,12 @@ INTRUDER_DIR = os.path.join(SCRIPT_DIR, "intruder_frames")
 
 
 def load_model():
-    """Initialize InsightFace with ArcFace model."""
+    """Initialize InsightFace with ArcFace model using Qualcomm NPU."""
     print("[recognize] Loading InsightFace model...")
     app = FaceAnalysis(
         name="buffalo_l",
         root=MODEL_DIR,
-        providers=["CPUExecutionProvider"]
+        providers=["QnnExecutionProvider", "CPUExecutionProvider"]  # Qualcomm NPU + CPU fallback
     )
     app.prepare(ctx_id=-1, det_size=(640, 640))
     print("[recognize] Model loaded.")
