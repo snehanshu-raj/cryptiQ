@@ -18,6 +18,7 @@ import time
 from datetime import datetime
 import numpy as np
 import cv2
+import requests
 from insightface.app import FaceAnalysis
 
 from db import init_db, get_all_residents
@@ -39,6 +40,11 @@ INTRUDER_SAVE_COOLDOWN = 2.0
 
 # Enable GUI display (set to False for headless systems)
 ENABLE_GUI = True
+
+# ESP32 Smart Lock Configuration
+ESP32_IP = os.getenv("ESP32_IP", "172.20.10.12")  # Change to your ESP32 IP
+ESP32_PORT = 80
+ESP32_ENABLED = os.getenv("ESP32_ENABLED", "false").lower() == "true"
 
 # ==========================
 
@@ -131,6 +137,36 @@ def draw_label(frame, bbox, label, color, score=None):
     cv2.putText(frame, text, (x1 + 2, y1 - 5), font, font_scale, (255, 255, 255), thickness)
 
 
+def send_to_esp32(status, name=None):
+    """
+    Send face detection status to ESP32 smart lock controller.
+    
+    Args:
+        status: 'recognize' or 'intruder'
+        name: Person name (if recognized)
+    """
+    if not ESP32_ENABLED:
+        return
+    
+    try:
+        url = f"http://{ESP32_IP}:{ESP32_PORT}/vision"
+        params = {"status": status}
+        response = requests.get(url, params=params, timeout=2)
+        
+        if response.status_code == 200:
+            print(f"[ESP32] {status.upper()} notification sent")
+            if name:
+                print(f"[ESP32] Person: {name}")
+        else:
+            print(f"[ESP32] Error: HTTP {response.status_code}")
+    except requests.exceptions.Timeout:
+        print(f"[ESP32] Connection timeout to {ESP32_IP}:{ESP32_PORT}")
+    except requests.exceptions.ConnectionError:
+        print(f"[ESP32] Cannot connect to {ESP32_IP}:{ESP32_PORT}")
+    except Exception as e:
+        print(f"[ESP32] Error: {e}")
+
+
 def main():
     global ENABLE_GUI
     
@@ -149,6 +185,15 @@ def main():
         print(f"[recognize] Loaded {len(residents)} enrolled resident(s):")
         for name, _ in residents:
             print(f"  - {name}")
+
+    # ESP32 Smart Lock configuration
+    if ESP32_ENABLED:
+        print(f"\n[ESP32] Smart Lock ENABLED")
+        print(f"        IP: {ESP32_IP}:{ESP32_PORT}")
+        print(f"        • Recognized → /vision?status=recognize (unlock)")
+        print(f"        • Intruder   → /vision?status=intruder (lock)\n")
+    else:
+        print(f"\n[ESP32] Smart Lock DISABLED (set ESP32_ENABLED=true to enable)\n")
 
     # Open webcam
     print(f"\n[recognize] Opening camera (index {CAMERA_INDEX})...")
@@ -193,6 +238,9 @@ def main():
                 color = (0, 200, 0)
                 draw_label(frame, bbox, name, color, score)
 
+                # Send recognition to ESP32 (unlock door)
+                send_to_esp32("recognize", name)
+
                 result = {
                     "status": "recognized",
                     "name": name,
@@ -204,6 +252,9 @@ def main():
                 # RED box — unknown / intruder
                 color = (0, 0, 220)
                 draw_label(frame, bbox, "UNKNOWN", color, score)
+
+                # Send intruder alert to ESP32 (lock door)
+                send_to_esp32("intruder")
 
                 # Save intruder frame (with cooldown to avoid flooding)
                 current_time = time.time()
