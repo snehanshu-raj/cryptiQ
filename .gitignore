@@ -5,4 +5,5 @@
 /image_authenticate/goal.md
 /image_authenticate/known_faces/
 /image_authenticate/intruder_frames/
-
+/image_authenticate/__pycache__
+/password_authenticate/__pycache__
