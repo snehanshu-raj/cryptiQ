@@ -132,6 +132,8 @@ def draw_label(frame, bbox, label, color, score=None):
 
 
 def main():
+    global ENABLE_GUI
+    
     init_db()
 
     # Load model
@@ -160,12 +162,21 @@ def main():
     # Tracking variables
     intruder_frame_count = 0
     last_intruder_save_time = 0
+    frame_timeout_count = 0
+    max_timeouts = 5
 
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("[recognize] Failed to read frame from camera.")
-            break
+            frame_timeout_count += 1
+            if frame_timeout_count >= max_timeouts:
+                print(f"[recognize] Failed to read {max_timeouts} consecutive frames. Exiting.")
+                break
+            print(f"[recognize] Camera timeout ({frame_timeout_count}/{max_timeouts}). Retrying...")
+            time.sleep(0.5)
+            continue
+        
+        frame_timeout_count = 0  # Reset counter on successful read
 
         # Detect faces in the frame
         faces = app.get(frame)
