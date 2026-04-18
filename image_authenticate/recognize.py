@@ -44,7 +44,7 @@ ENABLE_GUI = True
 # ESP32 Smart Lock Configuration
 ESP32_IP = os.getenv("ESP32_IP", "172.20.10.12")  # Change to your ESP32 IP
 ESP32_PORT = 80
-ESP32_ENABLED = os.getenv("ESP32_ENABLED", "false").lower() == "true"
+ESP32_ENABLED = os.getenv("ESP32_ENABLED", "true").lower() == "true"
 
 # ==========================
 
