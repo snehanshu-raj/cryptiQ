@@ -4,3 +4,4 @@ source venv/bin/activate
 uvicorn app:app --reload
 docker build -t cryptiq .
 docker run -p 8000:8000 cryptiq
+ssh ubuntu@100.71.82.34
