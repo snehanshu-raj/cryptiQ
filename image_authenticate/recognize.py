@@ -37,6 +37,9 @@ CAMERA_INDEX = 0
 # Minimum seconds between saving intruder frames (prevents disk flooding)
 INTRUDER_SAVE_COOLDOWN = 2.0
 
+# Enable GUI display (set to False for headless systems)
+ENABLE_GUI = True
+
 # ==========================
 
 # Paths relative to this script
@@ -46,12 +49,12 @@ INTRUDER_DIR = os.path.join(SCRIPT_DIR, "intruder_frames")
 
 
 def load_model():
-    """Initialize InsightFace with ArcFace model using Qualcomm NPU."""
+    """Initialize InsightFace with ArcFace model using CPU."""
     print("[recognize] Loading InsightFace model...")
     app = FaceAnalysis(
         name="buffalo_l",
         root=MODEL_DIR,
-        providers=["QnnExecutionProvider", "CPUExecutionProvider"]  # Qualcomm NPU + CPU fallback
+        providers=["CPUExecutionProvider"]
     )
     app.prepare(ctx_id=-1, det_size=(640, 640))
     print("[recognize] Model loaded.")
@@ -208,16 +211,32 @@ def main():
                 }
                 print(json.dumps(result))
 
-        # Show the frame
-        cv2.imshow("Face Authentication", frame)
-
-        # Press 'q' to quit
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            print("\n[recognize] Quitting...")
-            break
+        # Show the frame (if GUI is enabled)
+        if ENABLE_GUI:
+            try:
+                cv2.imshow("Face Authentication", frame)
+                # Press 'q' to quit
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    print("\n[recognize] Quitting...")
+                    break
+            except cv2.error as e:
+                print(f"[recognize] GUI error: {e}")
+                print("[recognize] Disabling display. Running in headless mode.")
+                print("[recognize] Detections logged to console. Frames saved to intruder_frames/")
+                ENABLE_GUI = False
+        else:
+            # Headless mode - just log results
+            pass
 
     cap.release()
-    cv2.destroyAllWindows()
+    
+    # Safely destroy windows if GUI was enabled
+    if ENABLE_GUI:
+        try:
+            cv2.destroyAllWindows()
+        except cv2.error:
+            pass
+    
     print("[recognize] Camera released. Done.")
 
 
