@@ -328,6 +328,47 @@ async def send_control_signal(data: Dict[str, Any]):
     }
 
 
+# ==================== ESP32 UNLOCK ENDPOINT ====================
+@app.post("/api/unlock-door")
+async def unlock_door(data: Dict[str, Any]):
+    """
+    Send unlock command to ESP32 IoT device.
+    """
+    ESP32_IP = "http://172.20.10.12"
+    
+    try:
+        import requests
+        
+        response = requests.get(
+            f"{ESP32_IP}/unlock",
+            timeout=5,
+        )
+        
+        print(f"[judge_backend] ESP32 unlock response: {response.status_code}")
+        
+        return {
+            "status": "unlocked",
+            "device": "ESP32",
+            "ip": ESP32_IP,
+            "message": "Door unlock signal sent successfully",
+            "device_response": response.text if response.status_code == 200 else f"Error {response.status_code}"
+        }
+    except requests.exceptions.ConnectionError:
+        return {
+            "status": "device_offline",
+            "device": "ESP32",
+            "ip": ESP32_IP,
+            "message": "Could not connect to ESP32 device",
+            "note": "Device may be offline or IP address is incorrect"
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "message": str(exc),
+            "device": "ESP32"
+        }
+
+
 # ==================== FACES DATA ENDPOINT ====================
 @app.get("/api/get-faces")
 async def get_faces():

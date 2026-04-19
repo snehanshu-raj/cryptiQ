@@ -45,6 +45,11 @@ ENABLE_GUI = True
 ESP32_IP = os.getenv("ESP32_IP", "172.20.10.12")  # Change to your ESP32 IP
 ESP32_PORT = 80
 ESP32_ENABLED = os.getenv("ESP32_ENABLED", "true").lower() == "true"
+ESP32_TIMEOUT = 2
+
+# Recognition state tracking
+LAST_RECOGNIZED_TIME = None
+RECOGNITION_COOLDOWN = 60  # 1 minute cooldown before intruder alerts after recognition
 
 # ==========================
 
@@ -167,6 +172,38 @@ def send_to_esp32(status, name=None):
         print(f"[ESP32] Error: {e}")
 
 
+def notify_esp32_recognized(name: str):
+    """Call this after a known face is confirmed."""
+    global LAST_RECOGNIZED_TIME
+    try:
+        url = f"http://{ESP32_IP}:{ESP32_PORT}/vision?status=recognize&name={name}"
+        r = requests.get(url, timeout=ESP32_TIMEOUT)
+        LAST_RECOGNIZED_TIME = time.time()
+        print(f"[ESP32] Recognized {name} → Status: SUCCESS")
+        print(f"[ESP32] Intruder alerts blocked for {RECOGNITION_COOLDOWN}s")
+    except Exception as e:
+        print(f"[ESP32] Failed to notify recognition: {e}")
+
+
+def notify_esp32_intruder():
+    """Call this when an unknown face is detected."""
+    global LAST_RECOGNIZED_TIME
+    
+    # Check if we're in cooldown period after a recognition
+    if LAST_RECOGNIZED_TIME is not None:
+        time_since_recognition = time.time() - LAST_RECOGNIZED_TIME
+        if time_since_recognition < RECOGNITION_COOLDOWN:
+            print(f"[ESP32] Intruder alert suppressed (cooldown: {RECOGNITION_COOLDOWN - time_since_recognition:.1f}s remaining)")
+            return
+    
+    try:
+        url = f"http://{ESP32_IP}:{ESP32_PORT}/vision?status=intruder"
+        r = requests.get(url, timeout=ESP32_TIMEOUT)
+        print(f"[ESP32] Intruder alert sent → Status: SUCCESS")
+    except Exception as e:
+        print(f"[ESP32] Failed to notify intruder: {e}")
+
+
 def main():
     global ENABLE_GUI
     
@@ -238,8 +275,8 @@ def main():
                 color = (0, 200, 0)
                 draw_label(frame, bbox, name, color, score)
 
-                # Send recognition to ESP32 (unlock door)
-                send_to_esp32("recognize", name)
+                # Notify ESP32 of recognition (unlock door)
+                notify_esp32_recognized(name)
 
                 result = {
                     "status": "recognized",
@@ -253,8 +290,8 @@ def main():
                 color = (0, 0, 220)
                 draw_label(frame, bbox, "UNKNOWN", color, score)
 
-                # Send intruder alert to ESP32 (lock door)
-                send_to_esp32("intruder")
+                # Notify ESP32 of intruder (with cooldown logic)
+                notify_esp32_intruder()
 
                 # Save intruder frame (with cooldown to avoid flooding)
                 current_time = time.time()

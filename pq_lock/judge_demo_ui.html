@@ -908,13 +908,28 @@
             const resultBox = document.getElementById('rsa-result');
 
             try {
-                const response = await fetch(`${backendUrl}/api/send-control-signal`, {
+                // Send unlock command to ESP32
+                const unlockResponse = await fetch(`${backendUrl}/api/unlock-door`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: "unlock" })
                 });
 
-                const data = await response.json();
+                const unlockData = await unlockResponse.json();
+
+                // Also send control signal
+                const controlResponse = await fetch(`${backendUrl}/api/send-control-signal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "unlock" })
+                });
+
+                const controlData = await controlResponse.json();
+
+                let deviceStatus = `<span style="color: var(--accent-green);">✓ Connected</span>`;
+                if (unlockData.status === 'device_offline' || unlockData.status === 'error') {
+                    deviceStatus = `<span style="color: var(--accent-yellow);">⚠️ ${unlockData.status.replace('_', ' ').toUpperCase()}</span>`;
+                }
 
                 const unlockHtml = `
                     <div class="result-title" style="color: var(--accent-red);">🔓 DOOR UNLOCKED!</div>
@@ -938,12 +953,16 @@
                             <div class="stat-label">Hacker</div>
                             <div class="stat-value">HAS ACCESS</div>
                         </div>
+                        <div class="stat-box" style="border-color: var(--accent-blue);">
+                            <div class="stat-label">ESP32 Device</div>
+                            <div class="stat-value" style="color: inherit;">${deviceStatus}</div>
+                        </div>
                     </div>
                 `;
 
                 resultBox.innerHTML += unlockHtml;
             } catch (error) {
-                resultBox.innerHTML += `<div class="result-title">Signal sent</div><div class="result-text">Control signal queued for transmission</div>`;
+                resultBox.innerHTML += `<div class="result-title">⚠️ Error</div><div class="result-text">Failed to send unlock signal: ${error.message}</div>`;
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '🔓 UNLOCK DOOR (Using Forged Private Key)';
