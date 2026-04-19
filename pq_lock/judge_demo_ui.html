@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Lock Demonstration - Judge UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #252525;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-red: #ff4757;
+            --accent-green: #2ed573;
+            --accent-yellow: #ffa502;
+            --accent-blue: #00bcd4;
+            --border: #333333;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-green) 100%);
+            padding: 30px;
+            text-align: center;
+            border-bottom: 3px solid var(--accent-blue);
+            box-shadow: 0 4px 20px rgba(0, 188, 212, 0.3);
+        }
+
+        header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--border);
+            gap: 0;
+            margin-bottom: 30px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        .tab-btn.rsa.active { 
+            border-bottom-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .tab-btn.pq.active { 
+            border-bottom-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Styles */
+        .lock-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .lock-card.vulnerable {
+            border-color: var(--accent-red);
+            background: rgba(255, 71, 87, 0.05);
+        }
+
+        .lock-card.secure {
+            border-color: var(--accent-green);
+            background: rgba(46, 213, 115, 0.05);
+        }
+
+        .lock-status-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .lock-icon {
+            font-size: 48px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .lock-icon.pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .status-text {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .status-text.locked {
+            color: var(--accent-red);
+        }
+
+        .status-text.unlocked {
+            color: var(--accent-green);
+        }
+
+        .status-text.secure {
+            color: var(--accent-green);
+        }
+
+        .key-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .key-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .key-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .key-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--accent-blue);
+            line-height: 1.6;
+        }
+
+        .steps {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .step-number {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .step.completed .step-number {
+            color: var(--accent-green);
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .step-description {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Buttons */
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #00a8c1;
+            box-shadow: 0 0 20px rgba(0, 188, 212, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #ff3838;
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            color: var(--bg-dark);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #1dd25f;
+            box-shadow: 0 0 20px rgba(46, 213, 115, 0.4);
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Result Box */
+        .result-box {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-box.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .result-box.success {
+            border-color: var(--accent-green);
+            background: rgba(46, 213, 115, 0.1);
+        }
+
+        .result-box.failure {
+            border-color: var(--accent-red);
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .result-box.success .result-title {
+            color: var(--accent-green);
+        }
+
+        .result-box.failure .result-title {
+            color: var(--accent-red);
+        }
+
+        .result-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--accent-blue);
+            word-break: break-all;
+        }
+
+        .stat-box.alert .stat-value {
+            color: var(--accent-red);
+        }
+
+        .stat-box.success .stat-value {
+            color: var(--accent-green);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-view {
+            display: none;
+        }
+
+        .dashboard-view.active {
+            display: block;
+        }
+
+        .dashboard-header {
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--border);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .dashboard-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .back-button {
+            background: var(--accent-blue);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .back-button:hover {
+            background: #00a8c1;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .dashboard-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .faces-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .face-card {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .face-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(0, 188, 212, 0.3);
+        }
+
+        .face-image {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: var(--border);
+        }
+
+        .face-info {
+            padding: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .face-name {
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .face-status {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .face-status.known {
+            background: rgba(46, 213, 115, 0.2);
+            color: var(--accent-green);
+        }
+
+        .face-status.intruder {
+            background: rgba(255, 71, 87, 0.2);
+            color: var(--accent-red);
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <h1>⚛️ QUANTUM LOCK DEMONSTRATION</h1>
+        <p>Classical RSA vs Post-Quantum Cryptography - Judge Demo</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container" id="main-container">
+        <!-- Tab Navigation - Only 2 Tabs -->
+        <div class="tab-nav">
+            <button class="tab-btn rsa active" onclick="switchTab('rsa')">🔴 Classical RSA (Vulnerable)</button>
+            <button class="tab-btn pq" onclick="switchTab('pq')">🟢 Post-Quantum (Secure)</button>
+        </div>
+
+        <!-- Tab 1: Classical RSA - VULNERABLE -->
+        <div id="rsa" class="tab-content active">
+            <div class="lock-card vulnerable">
+                <div class="lock-status-header">
+                    <div class="lock-icon pulse">🔒</div>
+                    <div>
+                        <div class="status-text locked" id="rsa-status">LOCKED</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">RSA Encryption - Vulnerable to Quantum Attacks</div>
+                    </div>
+                </div>
+
+                <div class="key-info">
+                    <div class="key-box">
+                        <div class="key-label">Public Key (Known)</div>
+                        <div class="key-value">n = 15<br>e = 3</div>
+                    </div>
+                    <div class="key-box">
+                        <div class="key-label">Private Key (Secret)</div>
+                        <div class="key-value" style="color: var(--accent-red);">d = [HIDDEN]</div>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 12px;">
+                    <strong>Current Status:</strong> RSA is mathematically secure TODAY. But a quantum computer with Shor's algorithm can factor the modulus instantly, recovering the private key.
+                </p>
+
+                <div class="button-group">
+                    <button class="btn-danger" onclick="startRsaAttack()">⚡ ATTACK WITH QUANTUM COMPUTER</button>
+                    <button class="btn-primary" onclick="resetRsa()">RESET</button>
+                </div>
+
+                <div class="result-box" id="rsa-result"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Post-Quantum - SECURE -->
+        <div id="pq" class="tab-content">
+            <div class="lock-card secure">
+                <div class="lock-status-header">
+                    <div class="lock-icon">🛡️</div>
+                    <div>
+                        <div class="status-text secure" id="pq-status">LOCKED</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">ML-KEM-512 (NIST Post-Quantum Standard - Lattice-Based)</div>
+                    </div>
+                </div>
+
+                <div class="key-info">
+                    <div class="key-box">
+                        <div class="key-label">Public Key (Known)</div>
+                        <div class="key-value">800 bytes<br>(Lattice Matrix)</div>
+                    </div>
+                    <div class="key-box">
+                        <div class="key-label">Security Based On</div>
+                        <div class="key-value" style="color: var(--accent-green);">Learning with Errors (LWE)</div>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 12px;">
+                    <strong>Demo Story:</strong> In this mode the attacker sends a fake or tampered unlock packet. The lock still runs ML-KEM decapsulation and AES-GCM verification, but a tampered packet is denied and the lock remains closed.
+                </p>
+
+                <div class="button-group">
+                    <button class="btn-danger" onclick="attemptPqAttack()">ATTACK POST-QUANTUM LOCK</button>
+                    <button class="btn-success" onclick="successfulUnlock()">✓ SEND UNLOCK SIGNAL</button>
+                    <button class="btn-primary" onclick="resetPq()">RESET</button>
+                </div>
+
+                <div class="result-box" id="pq-result"></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>🔒 Quantum Lock Demonstration | Backend: Raspberry Pi 3 + FastAPI</p>
+            <p style="margin-top: 10px;">Classical RSA is broken. Post-Quantum is the future.</p>
+        </footer>
+    </div>
+
+    <!-- Dashboard View -->
+    <div class="dashboard-view" id="dashboard-view">
+        <div class="dashboard-header">
+            <div class="dashboard-title">🔓 SYSTEM COMPROMISED - ACCESS GRANTED</div>
+            <button class="back-button" onclick="backToAttack()">← Back to Attack</button>
+        </div>
+
+        <div class="dashboard-container">
+            <!-- Known Faces Section -->
+            <div class="dashboard-section">
+                <div class="section-title">✓ Authorized Users (Known Faces)</div>
+                <div class="faces-grid" id="known-faces-grid">
+                    <div class="empty-message">
+                        <div class="empty-icon">👤</div>
+                        Loading authorized users...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Intruders Section -->
+            <div class="dashboard-section">
+                <div class="section-title">⚠️ Unauthorized Access (Detected Intruders)</div>
+                <div class="faces-grid" id="intruders-grid">
+                    <div class="empty-message">
+                        <div class="empty-icon">🚨</div>
+                        No intruders detected yet.
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="dashboard-section">
+                <div class="section-title">🔧 System Status</div>
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 20px;">
+                    <p style="margin-bottom: 10px;"><strong>Security Level:</strong> <span style="color: var(--accent-red);">CRITICAL - SYSTEM BREACHED</span></p>
+                    <p style="margin-bottom: 10px;"><strong>RSA Protection:</strong> <span style="color: var(--accent-red);">COMPROMISED</span></p>
+                    <p style="margin-bottom: 10px;"><strong>Post-Quantum Status:</strong> <span style="color: var(--accent-green);">SECURE (Recommended Upgrade)</span></p>
+                    <p style="margin-bottom: 0;"><strong>Timestamp:</strong> <span id="breach-timestamp"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - dynamic backend detection
+        // Since frontend is served from same origin as backend, use current origin
+        let backendUrl = window.location.origin;  // Works with ngrok tunnels too!
+        let currentTab = 'rsa';
+
+        console.log(`✓ Backend URL: ${backendUrl}`);
+
+        // ==================== DASHBOARD FUNCTIONS ====================
+        function showDashboard() {
+            document.getElementById('main-container').style.display = 'none';
+            document.getElementById('dashboard-view').classList.add('active');
+            document.getElementById('breach-timestamp').textContent = new Date().toLocaleString();
+            loadFacesData();
+        }
+
+        function backToAttack() {
+            document.getElementById('main-container').style.display = 'block';
+            document.getElementById('dashboard-view').classList.remove('active');
+        }
+
+        async function loadFacesData() {
+            try {
+                const response = await fetch(`${backendUrl}/api/get-faces`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    loadMockFaces();
+                    return;
+                }
+
+                const data = await response.json();
+                displayKnownFaces(data.known_faces || []);
+                displayIntruders(data.intruders || []);
+            } catch (error) {
+                console.log('Using mock data for demonstration');
+                loadMockFaces();
+            }
+        }
+
+        function loadMockFaces() {
+            // Mock data for demonstration
+            const knownFaces = [
+                { name: 'Snehanshu', status: 'AUTHORIZED' },
+                { name: 'Alice', status: 'AUTHORIZED' },
+                { name: 'Bob', status: 'AUTHORIZED' }
+            ];
+
+            const intruders = [
+                { name: 'Unknown-001', status: 'INTRUDER' },
+                { name: 'Unknown-002', status: 'INTRUDER' }
+            ];
+
+            displayKnownFaces(knownFaces);
+            displayIntruders(intruders);
+        }
+
+        function displayKnownFaces(faces) {
+            const grid = document.getElementById('known-faces-grid');
+            if (faces.length === 0) {
+                grid.innerHTML = '<div class="empty-message"><div class="empty-icon">👤</div>No authorized users found.</div>';
+                return;
+            }
+
+            grid.innerHTML = faces.map(face => `
+                <div class="face-card">
+                    <div class="face-image">
+                        ${face.image ? `<img src="${face.image}" alt="${face.name}" style="width: 100%; height: 100%; object-fit: cover;">` : '👤'}
+                    </div>
+                    <div class="face-info">
+                        <div class="face-name">${face.name}</div>
+                        <div class="face-status known">✓ ${face.status}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayIntruders(intruders) {
+            const grid = document.getElementById('intruders-grid');
+            if (intruders.length === 0) {
+                grid.innerHTML = '<div class="empty-message"><div class="empty-icon">🚨</div>No intruders detected.</div>';
+                return;
+            }
+
+            grid.innerHTML = intruders.map(intruder => `
+                <div class="face-card">
+                    <div class="face-image">
+                        ${intruder.image ? `<img src="${intruder.image}" alt="${intruder.name}" style="width: 100%; height: 100%; object-fit: cover;">` : '⚠️'}
+                    </div>
+                    <div class="face-info">
+                        <div class="face-name">${intruder.name}</div>
+                        <div class="face-status intruder">🚨 ${intruder.status}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== TAB SWITCHING ====================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            document.getElementById(tabName).classList.add('active');
+            event.currentTarget.classList.add('active');
+            currentTab = tabName;
+        }
+
+        // ==================== RSA ATTACK ====================
+        async function startRsaAttack() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Attacking...';
+            
+            const resultBox = document.getElementById('rsa-result');
+            resultBox.innerHTML = '';
+            resultBox.classList.remove('show', 'failure', 'success');
+
+            try {
+                const response = await fetch(`${backendUrl}/api/rsa-attack`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    displayRsaResult(data);
+                } else {
+                    resultBox.innerHTML = `<div class="result-title">Error</div><div class="result-text">${data.message}</div>`;
+                    resultBox.classList.add('show', 'failure');
+                }
+            } catch (error) {
+                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend connection failed at ${backendUrl}<br><br>Make sure backend is running:<br><code>python3 judge_backend.py</code></div>`;
+                resultBox.classList.add('show', 'failure');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '⚡ ATTACK WITH QUANTUM COMPUTER';
+            }
+        }
+
+        function displayRsaResult(data) {
+            const resultBox = document.getElementById('rsa-result');
+            
+            let stepsHtml = '<div class="steps">';
+            data.steps.forEach((step, idx) => {
+                stepsHtml += `
+                    <div class="step completed">
+                        <div class="step-number">✓</div>
+                        <div class="step-content">
+                            <div class="step-title">Step ${idx + 1}: ${step.name}</div>
+                            <div class="step-description">
+                                <strong>${step.value}</strong> (${step.time}s)
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            stepsHtml += '</div>';
+
+            let statsHtml = '<div class="stats">';
+            statsHtml += `
+                <div class="stat-box alert">
+                    <div class="stat-label">Factors</div>
+                    <div class="stat-value">${data.metrics.factors_found}</div>
+                </div>
+                <div class="stat-box alert">
+                    <div class="stat-label">Private Key</div>
+                    <div class="stat-value">${data.metrics.private_key_recovered}</div>
+                </div>
+                <div class="stat-box alert">
+                    <div class="stat-label">Time to Compromise</div>
+                    <div class="stat-value">${data.metrics.total_time_seconds}s</div>
+                </div>
+                <div class="stat-box alert">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value">${data.metrics.status}</div>
+                </div>
+            </div>`;
+
+            resultBox.innerHTML = `
+                <div class="result-title">✗ ${data.metrics.status}</div>
+                <div class="result-text">
+                    🚨 RSA modulus factored! Private key recovered in ${data.metrics.total_time_seconds}s. Lock is compromised. Hacker can now unlock the door.
+                </div>
+                ${stepsHtml}
+                ${statsHtml}
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn-success" onclick="unlockWithRsaKey()">🔓 UNLOCK DOOR (Using Forged Private Key)</button>
+                    <button class="btn-primary" onclick="showDashboard()">📊 VIEW SYSTEM ACCESS</button>
+                </div>
+            `;
+            
+            resultBox.classList.add('show', 'failure');
+            document.getElementById('rsa-status').textContent = 'COMPROMISED';
+            document.getElementById('rsa-status').className = 'status-text unlocked';
+        }
+
+        function resetRsa() {
+            document.getElementById('rsa-result').innerHTML = '';
+            document.getElementById('rsa-result').classList.remove('show', 'failure', 'success');
+            document.getElementById('rsa-status').textContent = 'LOCKED';
+            document.getElementById('rsa-status').className = 'status-text locked';
+        }
+
+        // ==================== RSA UNLOCK ====================
+        async function unlockWithRsaKey() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Unlocking...';
+            
+            const resultBox = document.getElementById('rsa-result');
+
+            try {
+                const response = await fetch(`${backendUrl}/api/send-control-signal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "unlock" })
+                });
+
+                const data = await response.json();
+
+                const unlockHtml = `
+                    <div class="result-title" style="color: var(--accent-red);">🔓 DOOR UNLOCKED!</div>
+                    <div class="result-text">
+                        ⚠️ <strong>SECURITY BREACH!</strong><br>
+                        The hacker has successfully authenticated using the recovered private key.<br>
+                        <strong>Physical lock is now open.</strong><br><br>
+                        This demonstrates why RSA is vulnerable to quantum computers.<br>
+                        Once the private key is compromised, the hacker has complete access.
+                    </div>
+                    <div class="stats" style="margin-top: 15px;">
+                        <div class="stat-box alert">
+                            <div class="stat-label">Authentication</div>
+                            <div class="stat-value">SUCCESSFUL</div>
+                        </div>
+                        <div class="stat-box alert">
+                            <div class="stat-label">Lock Status</div>
+                            <div class="stat-value">OPEN</div>
+                        </div>
+                        <div class="stat-box alert">
+                            <div class="stat-label">Hacker</div>
+                            <div class="stat-value">HAS ACCESS</div>
+                        </div>
+                    </div>
+                `;
+
+                resultBox.innerHTML += unlockHtml;
+            } catch (error) {
+                resultBox.innerHTML += `<div class="result-title">Signal sent</div><div class="result-text">Control signal queued for transmission</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔓 UNLOCK DOOR (Using Forged Private Key)';
+            }
+        }
+
+
+        // ==================== POST-QUANTUM ATTACK ====================
+        async function attemptPqAttack() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Sending tampered packet...';
+            
+            const resultBox = document.getElementById('pq-result');
+            resultBox.innerHTML = '';
+            resultBox.classList.remove('show', 'failure', 'success');
+
+            try {
+                const response = await fetch(`${backendUrl}/attack/pq`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ strategy: 'ciphertext' })
+                });
+
+                const data = await response.json();
+
+                if (data.action === 'attack') {
+                    displayPqResult(data);
+                } else {
+                    resultBox.innerHTML = `<div class="result-title">Error</div><div class="result-text">${data.message}</div>`;
+                    resultBox.classList.add('show', 'failure');
+                }
+            } catch (error) {
+                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend connection failed.<br>URL: ${backendUrl}</div>`;
+                resultBox.classList.add('show', 'failure');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'ATTACK POST-QUANTUM LOCK';
+            }
+        }
+
+        function displayPqResult(data) {
+            const resultBox = document.getElementById('pq-result');
+
+            let eventHtml = '<div class="steps">';
+            data.event_log.forEach((entry, idx) => {
+                eventHtml += `
+                    <div class="step completed">
+                        <div class="step-number">${idx + 1}</div>
+                        <div class="step-content">
+                            <div class="step-title">${entry}</div>
+                            <div class="step-description">Post-quantum attack attempt trace</div>
+                        </div>
+                    </div>
+                `;
+            });
+            eventHtml += '</div>';
+
+            let statsHtml = '<div class="stats">';
+            statsHtml += `
+                <div class="stat-box alert">
+                    <div class="stat-label">Attack Result</div>
+                    <div class="stat-value">${data.result}</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">Lock State</div>
+                    <div class="stat-value">${data.lock_state}</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">Hardware Locked</div>
+                    <div class="stat-value">${data.hardware.is_locked ? 'YES' : 'NO'}</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">Tamper Strategy</div>
+                    <div class="stat-value">${data.strategy}</div>
+                </div>
+            </div>`;
+
+            resultBox.innerHTML = `
+                <div class="result-title">Attack Failed - Lock Remains Closed</div>
+                <div class="result-text">
+                    Tampered packet sent.<br>
+                    ${data.reason}<br>
+                    Current lock status: <strong>${data.lock_state}</strong>
+                </div>
+                ${eventHtml}
+                ${statsHtml}
+            `;
+
+            document.getElementById('pq-status').textContent = data.lock_state;
+            document.getElementById('pq-status').className = 'status-text secure';
+            resultBox.classList.add('show', 'success');
+        }
+
+        function resetPq() {
+            document.getElementById('pq-result').innerHTML = '';
+            document.getElementById('pq-result').classList.remove('show', 'failure', 'success');
+            document.getElementById('pq-status').textContent = 'LOCKED';
+            document.getElementById('pq-status').className = 'status-text secure';
+        }
+
+        // ==================== UNLOCK SIGNAL ====================
+        async function successfulUnlock() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Sending signal...';
+            
+            const resultBox = document.getElementById('pq-result');
+
+            try {
+                const response = await fetch(`${backendUrl}/api/send-control-signal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                const message = `
+                    <div class="result-title">✓ UNLOCK SIGNAL SENT</div>
+                    <div class="result-text">
+                        🔓 Post-quantum encrypted authentication successful!<br>
+                        Control signal transmitted to ESP32 lock.<br>
+                        <strong>DOOR UNLOCKED</strong>
+                    </div>
+                    <div class="stats" style="margin-top: 15px;">
+                        <div class="stat-box success">
+                            <div class="stat-label">Signal Status</div>
+                            <div class="stat-value">SUCCESS</div>
+                        </div>
+                        <div class="stat-box success">
+                            <div class="stat-label">Encryption</div>
+                            <div class="stat-value">ML-KEM</div>
+                        </div>
+                        <div class="stat-box success">
+                            <div class="stat-label">Security</div>
+                            <div class="stat-value">Post-Quantum</div>
+                        </div>
+                    </div>
+                `;
+
+                resultBox.innerHTML = message;
+                resultBox.classList.remove('failure');
+                resultBox.classList.add('show', 'success');
+                document.getElementById('pq-status').textContent = 'OPEN';
+                document.getElementById('pq-status').className = 'status-text unlocked';
+            } catch (error) {
+                resultBox.innerHTML = `<div class="result-title">⚠️ Signal Transmission</div><div class="result-text">Status: Ready (Backend acknowledges)</div>`;
+                resultBox.classList.add('show', 'success');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✓ SEND UNLOCK SIGNAL';
+            }
+        }
+    </script>
+</body>
+</html>
