@@ -7,13 +7,18 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 import time
 from typing import Any, Dict
+
+# Add parent directory to Python path for pq_lock imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from pq_lock.attacks.shor_attack import factor_toy_rsa_modulus
@@ -41,6 +46,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==================== FRONTEND SERVING ====================
+# Serve the frontend HTML from root path
+@app.get("/")
+async def serve_root():
+    """Serve the main demo UI at root path."""
+    return FileResponse(
+        path="judge_demo_ui.html",
+        media_type="text/html"
+    )
 
 # ==================== AUTHENTICATION ====================
 sessions: dict[str, dict[str, Any]] = {}
@@ -332,9 +347,9 @@ if __name__ == "__main__":
     ================================================================
       Quantum Lock Judge Demo Backend - Raspberry Pi 3
       Port: {QUANTUM_API_PORT}
-      Authentication: Enabled (Password-based)
+      Serving: http://localhost:{QUANTUM_API_PORT} (or ngrok URL)
+      Frontend: GET  /
       Endpoints:
-      - POST /api/authenticate
       - POST /api/rsa-attack
       - POST /attack/pq
       - POST /api/pq-attack

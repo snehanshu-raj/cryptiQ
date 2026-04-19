@@ -516,32 +516,12 @@
     </div>
 
     <script>
-        // Configuration - backend detection
-        const BACKEND_PORT = 8001;
-        let backendUrl = `http://localhost:${BACKEND_PORT}`;
+        // Configuration - dynamic backend detection
+        // Since frontend is served from same origin as backend, use current origin
+        let backendUrl = window.location.origin;  // Works with ngrok tunnels too!
         let currentTab = 'rsa';
 
-        // Auto-detect backend URL on load
-        window.addEventListener('load', async () => {
-            const possibleUrls = [
-                `http://localhost:${BACKEND_PORT}`,
-                `http://127.0.0.1:${BACKEND_PORT}`,
-                `http://${window.location.hostname}:${BACKEND_PORT}`
-            ];
-
-            for (let url of possibleUrls) {
-                try {
-                    const response = await fetch(`${url}/health`, { timeout: 2000 });
-                    if (response.ok) {
-                        backendUrl = url;
-                        console.log(`✓ Backend found at: ${backendUrl}`);
-                        break;
-                    }
-                } catch (e) {
-                    // Try next URL
-                }
-            }
-        });
+        console.log(`✓ Backend URL: ${backendUrl}`);
 
         // ==================== TAB SWITCHING ====================
         function switchTab(tabName) {
@@ -553,7 +533,7 @@
             });
 
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            event.currentTarget.classList.add('active');
             currentTab = tabName;
         }
 
@@ -583,7 +563,7 @@
                     resultBox.classList.add('show', 'failure');
                 }
             } catch (error) {
-                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend not found at ${backendUrl}<br><br>Please start the backend:<br><code>cd /home/srj/cryptiq/pq_lock && python3 judge_backend.py</code></div>`;
+                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend connection failed at ${backendUrl}<br><br>Make sure backend is running:<br><code>python3 judge_backend.py</code></div>`;
                 resultBox.classList.add('show', 'failure');
             } finally {
                 btn.disabled = false;
@@ -732,7 +712,7 @@
                     resultBox.classList.add('show', 'failure');
                 }
             } catch (error) {
-                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend not found at ${backendUrl}</div>`;
+                resultBox.innerHTML = `<div class="result-title">⚠️ Connection Error</div><div class="result-text">Backend connection failed.<br>URL: ${backendUrl}</div>`;
                 resultBox.classList.add('show', 'failure');
             } finally {
                 btn.disabled = false;
