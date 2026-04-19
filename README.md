@@ -23,6 +23,12 @@ For the factoring demo, the default toy RSA modulus is the canonical tiny exampl
 1. `toy RSA normal flow`: the legitimate controller signs an `UNLOCK` token and the toy RSA lock opens.
 2. `toy RSA broken flow`: the factoring demo recovers the tiny RSA private key and forges a valid unlock token.
 3. `post-quantum flow`: the controller encapsulates to the lock's ML-KEM public key, encrypts `UNLOCK` with AES-GCM, and the lock opens only if authentication succeeds.
+4. `post-quantum attack attempt`: the backend first generates a valid PQ unlock packet, then deliberately tampers with it before delivery. ML-KEM decapsulation and AES-GCM verification still run, authentication fails, and the lock stays closed.
+
+## Judge Demo Story
+- In legacy RSA mode, the toy factoring demo recovers the tiny private key and can forge an unlock token.
+- In post-quantum mode, the attacker only sends a fake or tampered unlock packet.
+- The post-quantum packet fails authentication, the lock fails closed, and the physical or mock actuator remains locked.
 
 ## Hardware Prep
 - `LockHardware` defines the actuator interface.
@@ -51,7 +57,12 @@ For the factoring demo, the default toy RSA modulus is the canonical tiny exampl
    ```bash
    python -m pq_lock.demos.pq_demo
    ```
-5. Run the tests:
+5. Run the judge backend and open the phone-friendly UI:
+   ```bash
+   python -m pq_lock.judge_backend
+   ```
+   Then open `pq_lock/judge_demo_ui.html` in a browser and use `Attack Post-Quantum Lock` to send a tampered packet through the backend API.
+6. Run the tests:
    ```bash
    python -m unittest discover -s tests -v
    ```

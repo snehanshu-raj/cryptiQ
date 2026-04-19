@@ -2,3 +2,6 @@ cryptography
 liboqs-python
 qiskit
 qiskit-aer
+fastapi
+uvicorn
+requests

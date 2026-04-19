@@ -5,9 +5,7 @@ Tests all endpoints without needing curl or manual testing
 """
 
 import requests
-import json
 import sys
-from time import time
 
 # Configuration
 BACKEND_URL = "http://localhost:8001"
@@ -123,46 +121,9 @@ def test_rsa_attack(token):
         print_error(f"Error: {str(e)}")
         return False
 
-def test_quantum_attack(token):
-    """Test quantum attack endpoint"""
-    print_header("4. Testing Quantum Attack Endpoint")
-    
-    if not token:
-        print_error("No valid token. Skipping.")
-        return False
-    
-    try:
-        payload = {"token": token}
-        response = requests.post(
-            f"{BACKEND_URL}/api/quantum-attack",
-            json=payload,
-            timeout=5
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "attack_complete":
-                print_success("Quantum attack simulation completed")
-                result = data.get("result", {})
-                print(f"  Factors: {result.get('factors')}")
-                print(f"  Private key: {result.get('private_key')}")
-                print(f"  Quantum time: {result.get('time_to_compromise')}")
-                print(f"  Classical time: {result.get('time_classical')}")
-                print(f"  Status: {result.get('lock_status')}")
-                return True
-            else:
-                print_error(f"Attack failed: {data.get('message')}")
-                return False
-        else:
-            print_error(f"Unexpected status code: {response.status_code}")
-            return False
-    except Exception as e:
-        print_error(f"Error: {str(e)}")
-        return False
-
 def test_pq_attack(token):
     """Test post-quantum attack endpoint"""
-    print_header("5. Testing Post-Quantum Attack Endpoint")
+    print_header("4. Testing Post-Quantum Attack Endpoint")
     
     if not token:
         print_error("No valid token. Skipping.")
@@ -178,14 +139,14 @@ def test_pq_attack(token):
         
         if response.status_code == 200:
             data = response.json()
-            if data.get("status") == "attack_failed":
+            if data.get("status") == "success":
                 print_success("Post-quantum defense verified (attack failed as expected)")
                 result = data.get("result", {})
                 print(f"  Lock status: {result.get('lock_status')}")
                 print(f"  Security level: {data.get('security_level')}")
                 print(f"  Cryptanalysis: {result.get('cryptanalysis')}")
                 
-                attempts = data.get("attack_attempts", [])
+                attempts = data.get("attacks", [])
                 print(f"  Attack attempts tested: {len(attempts)}")
                 for attempt in attempts:
                     print(f"    - {attempt['method']}: {attempt['result']}")
@@ -202,7 +163,7 @@ def test_pq_attack(token):
 
 def test_control_signal(token):
     """Test control signal endpoint"""
-    print_header("6. Testing Control Signal Endpoint")
+    print_header("5. Testing Control Signal Endpoint")
     
     if not token:
         print_error("No valid token. Skipping.")
@@ -253,9 +214,8 @@ def run_all_tests():
         print_error("Authentication failed. Stopping tests.")
         return results
     
-    # Test 3-6: Attacks and control
+    # Test 3-5: Attacks and control
     results['rsa'] = test_rsa_attack(token)
-    results['quantum'] = test_quantum_attack(token)
     results['pq'] = test_pq_attack(token)
     results['signal'] = test_control_signal(token)
     

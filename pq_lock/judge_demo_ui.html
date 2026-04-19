@@ -479,7 +479,7 @@
                 <div class="lock-status-header">
                     <div class="lock-icon">🛡️</div>
                     <div>
-                        <div class="status-text secure">SECURE</div>
+                        <div class="status-text secure" id="pq-status">LOCKED</div>
                         <div style="color: var(--text-secondary); font-size: 12px;">ML-KEM-512 (NIST Post-Quantum Standard - Lattice-Based)</div>
                     </div>
                 </div>
@@ -496,11 +496,11 @@
                 </div>
 
                 <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 12px;">
-                    <strong>Future-Proof:</strong> ML-KEM is resistant to quantum attacks because it relies on the <strong>Learning with Errors (LWE)</strong> lattice problem - hard for both classical AND quantum computers. No known quantum algorithm breaks this.
+                    <strong>Demo Story:</strong> In this mode the attacker sends a fake or tampered unlock packet. The lock still runs ML-KEM decapsulation and AES-GCM verification, but a tampered packet is denied and the lock remains closed.
                 </p>
 
                 <div class="button-group">
-                    <button class="btn-danger" onclick="attemptPqAttack()">⚡ ATTEMPT QUANTUM ATTACK</button>
+                    <button class="btn-danger" onclick="attemptPqAttack()">ATTACK POST-QUANTUM LOCK</button>
                     <button class="btn-success" onclick="successfulUnlock()">✓ SEND UNLOCK SIGNAL</button>
                     <button class="btn-primary" onclick="resetPq()">RESET</button>
                 </div>
@@ -710,22 +710,22 @@
         async function attemptPqAttack() {
             const btn = event.target;
             btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Testing...';
+            btn.innerHTML = '<span class="loading"></span> Sending tampered packet...';
             
             const resultBox = document.getElementById('pq-result');
             resultBox.innerHTML = '';
             resultBox.classList.remove('show', 'failure', 'success');
 
             try {
-                const response = await fetch(`${backendUrl}/api/pq-attack`, {
+                const response = await fetch(`${backendUrl}/attack/pq`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ strategy: 'ciphertext' })
                 });
 
                 const data = await response.json();
 
-                if (data.status === 'success') {
+                if (data.action === 'attack') {
                     displayPqResult(data);
                 } else {
                     resultBox.innerHTML = `<div class="result-title">Error</div><div class="result-text">${data.message}</div>`;
@@ -736,61 +736,68 @@
                 resultBox.classList.add('show', 'failure');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '⚡ ATTEMPT QUANTUM ATTACK';
+                btn.innerHTML = 'ATTACK POST-QUANTUM LOCK';
             }
         }
 
         function displayPqResult(data) {
             const resultBox = document.getElementById('pq-result');
-            
-            let attacksHtml = '<div class="steps">';
-            data.attacks.forEach((attack, idx) => {
-                const isFailed = attack.result === 'FAILED' || attack.result === 'INFEASIBLE';
-                attacksHtml += `
-                    <div class="step ${isFailed ? 'completed' : ''}">
-                        <div class="step-number">${isFailed ? '✗' : '⚠'}</div>
+
+            let eventHtml = '<div class="steps">';
+            data.event_log.forEach((entry, idx) => {
+                eventHtml += `
+                    <div class="step completed">
+                        <div class="step-number">${idx + 1}</div>
                         <div class="step-content">
-                            <div class="step-title">${attack.method}</div>
-                            <div class="step-description">
-                                Result: <strong>${attack.result}</strong>
-                            </div>
+                            <div class="step-title">${entry}</div>
+                            <div class="step-description">Post-quantum attack attempt trace</div>
                         </div>
                     </div>
                 `;
             });
-            attacksHtml += '</div>';
+            eventHtml += '</div>';
 
             let statsHtml = '<div class="stats">';
             statsHtml += `
-                <div class="stat-box success">
-                    <div class="stat-label">Quantum Attacks Tested</div>
-                    <div class="stat-value">${data.attacks.length}</div>
+                <div class="stat-box alert">
+                    <div class="stat-label">Attack Result</div>
+                    <div class="stat-value">${data.result}</div>
                 </div>
                 <div class="stat-box success">
-                    <div class="stat-label">Attacks Failed</div>
-                    <div class="stat-value">${data.attacks.filter(a => a.result === 'FAILED' || a.result === 'INFEASIBLE').length}</div>
+                    <div class="stat-label">Lock State</div>
+                    <div class="stat-value">${data.lock_state}</div>
                 </div>
                 <div class="stat-box success">
-                    <div class="stat-label">ML-KEM Status</div>
-                    <div class="stat-value">SECURE ✓</div>
+                    <div class="stat-label">Hardware Locked</div>
+                    <div class="stat-value">${data.hardware.is_locked ? 'YES' : 'NO'}</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">Tamper Strategy</div>
+                    <div class="stat-value">${data.strategy}</div>
                 </div>
             </div>`;
 
             resultBox.innerHTML = `
-                <div class="result-title">✓ ML-KEM REMAINS SECURE</div>
+                <div class="result-title">Attack Failed - Lock Remains Closed</div>
                 <div class="result-text">
-                    ✅ All quantum attack methods failed! ML-KEM is resistant to quantum computers. No hacker can unlock this door.
+                    Tampered packet sent.<br>
+                    ${data.reason}<br>
+                    Current lock status: <strong>${data.lock_state}</strong>
                 </div>
-                ${attacksHtml}
+                ${eventHtml}
                 ${statsHtml}
             `;
-            
+
+            document.getElementById('pq-status').textContent = data.lock_state;
+            document.getElementById('pq-status').className = 'status-text secure';
             resultBox.classList.add('show', 'success');
         }
 
         function resetPq() {
             document.getElementById('pq-result').innerHTML = '';
             document.getElementById('pq-result').classList.remove('show', 'failure', 'success');
+            document.getElementById('pq-status').textContent = 'LOCKED';
+            document.getElementById('pq-status').className = 'status-text secure';
         }
 
         // ==================== UNLOCK SIGNAL ====================
@@ -836,6 +843,8 @@
                 resultBox.innerHTML = message;
                 resultBox.classList.remove('failure');
                 resultBox.classList.add('show', 'success');
+                document.getElementById('pq-status').textContent = 'OPEN';
+                document.getElementById('pq-status').className = 'status-text unlocked';
             } catch (error) {
                 resultBox.innerHTML = `<div class="result-title">⚠️ Signal Transmission</div><div class="result-text">Status: Ready (Backend acknowledges)</div>`;
                 resultBox.classList.add('show', 'success');
